@@ -1737,6 +1737,7 @@ paths:
                 $ref: '#/components/schemas/admin_id'
         '500':
           description: Внутренняя ошибка сервера
+  /api/v1/admin/admins/change_password:
     patch:
       tags:
         - API Admins

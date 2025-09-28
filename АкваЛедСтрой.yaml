@@ -5,21 +5,54 @@ info:
 servers:
   - url: https://api.server.test
 paths: 
-  /api/admin/login:
+  /api/v1/admin/login:
     post:
+      tags:
+        - API Authentication
+      summary: Аутентификация пользователя
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+                - email
+                - password
       responses:
-        '200':
+        '201':
           description: OK
           headers:
             Set-Cookie:
               schema:
                 type: string
+                example: SESSIONID=abcde12345; Path=/; HttpOnly
               description: Идентификатор сессии
-              example: SESSIONID=abcde12345
         '401': 
           description: Unauthorized
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal Server Error
+  /api/v1/admin/logout:
+    post:
+      tags:
+        - API Authentication
+      summary: Выход пользователя
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Internal Server Error
+  /api/v1/admin/password_recovery:
+    post:
+      tags:
+        - API Authentication
+      summary: Восстановление пароля
       requestBody:
         required: true
         content: 
@@ -29,8 +62,2469 @@ paths:
               properties:
                 email: 
                   type: string
-                password:
-                  type: string
               required:
                 - email
-                - password
+      responses:
+        '200':
+          description: OK
+        '500':
+          description: Internal Server Error     
+
+  /api/v1/admin/products:
+    get:
+      tags:
+        - API Products
+      summary: Список всех товаров
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/filter_param"
+        - name: direction
+          in: query
+          description: Направление сортировки по наименованию товара
+          required: false
+          schema:
+              type: string
+              default: asc
+              enum:
+                - desc
+                - asc
+              example: asc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                          type: object
+                          allOf:
+                            - $ref: '#/components/schemas/product_id'
+                            - $ref: '#/components/schemas/product_base'
+                            - type: object
+                              properties:
+                                category: 
+                                  $ref: "#/components/schemas/product_category"
+                                series:
+                                  $ref: "#/components/schemas/product_series"
+        '500':
+          description: Внутренняя ошибка сервера
+    post:
+      tags:
+        - API Products
+      summary: Добавление товара
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/product_base"
+                - $ref: "#/components/schemas/product_short_description"
+                - $ref: "#/components/schemas/item_media_id_list"
+                - type: object
+                  properties:
+                    category: 
+                      $ref: "#/components/schemas/product_category_id"
+                    series:
+                      $ref: "#/components/schemas/product_series_id"
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/product_id'
+        '500':
+          description: Внутренняя ошибка сервера
+  /api/v1/admin/products/{id}:
+    get:
+      tags:
+        - API Products
+      summary: Детальное описание товара 
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/product_id"
+                - $ref: "#/components/schemas/product_base"
+                - $ref: "#/components/schemas/product_short_description"
+                - $ref: "#/components/schemas/item_media_list"
+                - type: object
+                  properties:
+                    category: 
+                      $ref: "#/components/schemas/product_category"
+                    series:
+                      $ref: "#/components/schemas/product_series"
+        '500':
+          description: Внутренняя ошибка сервера
+    put:
+      tags:
+        - API Products
+      summary: Редактирование товара
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/product_base"
+                - $ref: "#/components/schemas/product_short_description"
+                - $ref: "#/components/schemas/item_media_id_list"
+                - type: object
+                  properties:
+                    category: 
+                      $ref: "#/components/schemas/product_category_id"
+                    series:
+                      $ref: "#/components/schemas/product_series_id"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/product_id"
+                - $ref: "#/components/schemas/product_base"
+                - $ref: "#/components/schemas/product_short_description"
+                - $ref: "#/components/schemas/item_media_list"
+                - type: object
+                  properties:
+                    category: 
+                      $ref: "#/components/schemas/product_category"
+                    series:
+                      $ref: "#/components/schemas/product_series"
+        '500':
+          description: Внутренняя ошибка сервера
+    delete:
+      tags:
+        - API Products
+      summary: Удаление товара
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/admin/products/categories:
+    get:
+      tags:
+        - API Product categories
+      summary: Список всех категорий товаров
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/filter_param"
+        - name: direction
+          in: query
+          description: Направление сортировки по наименованию категории товара
+          required: false
+          schema:
+              type: string
+              default: asc
+              enum:
+                - desc
+                - asc
+              example: asc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                            $ref: '#/components/schemas/product_category'
+    post:
+      tags:
+        - API Product categories
+      summary: Добавление категории товара
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/product_category_base"
+                - type: object
+                  required:
+                    - media
+                  properties:
+                    media:
+                      $ref: '#/components/schemas/media_id'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/product_category_id'
+  /api/v1/admin/products/categories/{id}:
+    get:
+      tags:
+        - API Product categories
+      summary: Детальное описание категории товара 
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/product_category'
+                - type: object
+                  required:
+                    - media
+                  properties:
+                    media:
+                      $ref: '#/components/schemas/media'
+        '500':
+          description: Внутренняя ошибка сервера
+    put:
+      tags:
+        - API Product categories
+      summary: Редактирование категории товара
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/product_category_base"
+                - type: object
+                  required:
+                    - media
+                  properties:
+                    media:
+                      $ref: '#/components/schemas/media_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/product_category'
+                - type: object
+                  required:
+                    - media
+                  properties:
+                    media:
+                      $ref: '#/components/schemas/media'
+        '500':
+          description: Внутренняя ошибка сервера
+    delete:
+      tags:
+        - API Product categories
+      summary: Удаление категории товара
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: В категории содержатся товары. Удалить можно только пустую категорию.
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/admin/products/series:
+    get:
+      tags:
+        - API Product series
+      summary: Список всех серий товаров
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/filter_param"
+        - name: direction
+          in: query
+          description: Направление сортировки по наименованию серии товара
+          required: false
+          schema:
+              type: string
+              default: asc
+              enum:
+                - desc
+                - asc
+              example: asc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                            $ref: '#/components/schemas/product_series'
+    post:
+      tags:
+        - API Product series
+      summary: Добавление серии товара
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/product_series_base"
+                - type: object
+                  required:
+                    - media
+                  properties:
+                    media:
+                      $ref: '#/components/schemas/media_id'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/product_series_id'
+  /api/v1/admin/products/series/{id}:
+    get:
+      tags:
+        - API Product series
+      summary: Детальное описание серии товара 
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/product_series'
+                - type: object
+                  required:
+                    - media
+                  properties:
+                    media:
+                      $ref: '#/components/schemas/media'
+        '500':
+          description: Внутренняя ошибка сервера
+    put:
+      tags:
+        - API Product series
+      summary: Редактирование серии товара
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/product_series_base"
+                - type: object
+                  required:
+                    - media
+                  properties:
+                    media:
+                      $ref: '#/components/schemas/media_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/product_series'
+                - type: object
+                  required:
+                    - media
+                  properties:
+                    media:
+                      $ref: '#/components/schemas/media'
+        '500':
+          description: Внутренняя ошибка сервера
+    delete:
+      tags:
+        - API Product series
+      summary: Удаление серии товара
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: В серии содержатся товары. Удалить можно только пустую серию.
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/admin/projects:
+    get:
+      tags:
+        - API Projects
+      summary: Список всех проектов
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/filter_param"
+        - name: direction
+          in: query
+          description: Направление сортировки по наименованию проекта
+          required: false
+          schema:
+              type: string
+              default: asc
+              enum:
+                - desc
+                - asc
+              example: asc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                          type: object
+                          allOf:
+                            - $ref: '#/components/schemas/project_id'
+                            - $ref: '#/components/schemas/project_base'
+                            - type: object
+                              properties:
+                                categories:
+                                  type: array
+                                  items:
+                                    type: object
+                                    allOf:
+                                    - $ref: "#/components/schemas/project_id"
+                                    - $ref: "#/components/schemas/project_category_name_plural"
+                              required:
+                                - categories
+                                - media_files
+        '500':
+          description: Внутренняя ошибка сервера
+    post:
+      tags:
+        - API Projects
+      summary: Добавление проекта
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/project_base"
+                - type: object
+                  properties:
+                    categories:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/project_category_id'
+                    media_files:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/media_id'
+                    products:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/product_id'
+                  required:
+                    - categories
+                    - media_files
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/project_id'
+        '500':
+          description: Внутренняя ошибка сервера
+  /api/v1/admin/projects/{id}:
+    get:
+      tags:
+        - API Projects
+      summary: Детальное описание проекта 
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/project_id"
+                - $ref: "#/components/schemas/project_base"
+                - type: object
+                  properties:
+                    categories:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/project_category'
+                    media_files:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/media'
+                    products:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/project_product'
+                  required:
+                    - categories
+                    - media_files
+        '500':
+          description: Внутренняя ошибка сервера
+    put:
+      tags:
+        - API Projects
+      summary: Редактирование проекта
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/project_base"
+                - type: object
+                  properties:
+                    categories:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/project_category_id'
+                    media_files:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/media_id'
+                    products:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/product_id'
+                  required:
+                    - categories
+                    - media_files
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/project_id"
+                - $ref: "#/components/schemas/project_base"
+                - type: object
+                  properties:
+                    categories:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/project_category'
+                    media_files:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/media'
+                  required:
+                    - categories
+                    - media_files
+        '500':
+          description: Внутренняя ошибка сервера
+    delete:
+      tags:
+        - API Projects
+      summary: Удаление проекта
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/admin/projects/categories:
+    get:
+      tags:
+        - API Project categories
+      summary: Список всех категорий проектов
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/filter_param"
+        - name: direction
+          in: query
+          description: Направление сортировки по наименованию категории проекта
+          required: false
+          schema:
+              type: string
+              default: asc
+              enum:
+                - desc
+                - asc
+              example: asc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                            $ref: '#/components/schemas/project_category'
+    post:
+      tags:
+        - API Project categories
+      summary: Добавление категории проекта
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/project_category_base"
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/project_category_id'
+  /api/v1/admin/projects/categories/{id}:
+    get:
+      tags:
+        - API Project categories
+      summary: Детальное описание категории проекта 
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/project_category'
+        '500':
+          description: Внутренняя ошибка сервера
+    put:
+      tags:
+        - API Project categories
+      summary: Редактирование категории проекта
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/project_category_base"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/project_category'
+        '500':
+          description: Внутренняя ошибка сервера
+    delete:
+      tags:
+        - API Project categories
+      summary: Удаление категории проекта
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+  /api/v1/admin/solutions:
+    get:
+      tags:
+        - API Solutions
+      summary: Список всех готовых решений
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/filter_param"
+        - name: direction
+          in: query
+          description: Направление сортировки по наименованию готового решение
+          required: false
+          schema:
+              type: string
+              default: asc
+              enum:
+                - desc
+                - asc
+              example: asc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/solution'
+        '500':
+          description: Внутренняя ошибка сервера
+    post:
+      tags:
+        - API Solutions
+      summary: Добавление готового решения
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/solution_base"
+                - type: object
+                  properties:
+                    media: 
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/item_media_id_list'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/solution_id'
+        '500':
+          description: Внутренняя ошибка сервера
+  /api/v1/admin/solutions/{id}:
+    get:
+      tags:
+        - API Solutions
+      summary: Детальное описание готового решения
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/solution_id"
+                - $ref: "#/components/schemas/solution_base"
+                - type: object
+                  properties:
+                    media: 
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/item_media_list'
+        '500':
+          description: Внутренняя ошибка сервера
+    put:
+      tags:
+        - API Solutions
+      summary: Редактирование готового решения
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/solution_base"
+                - type: object
+                  properties:
+                    media: 
+                      $ref: "#/components/schemas/item_media_id_list"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/solution_id"
+                - $ref: "#/components/schemas/solution_base"
+                - type: object
+                  properties:
+                    media: 
+                      $ref: "#/components/schemas/item_media_list"
+        '500':
+          description: Внутренняя ошибка сервера
+    delete:
+      tags:
+        - API Solutions
+      summary: Удаление готового решения
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/admin/articles:
+    get:
+      tags:
+        - API Articles
+      summary: Список всех статей
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/filter_param"
+        - $ref: "#/components/parameters/direction_param"
+        - name: sort_by
+          in: query
+          description: Параметр сортировки.
+          required: false
+          schema:
+              type: string
+              default: name
+              enum:
+                - name
+                - publish_date
+              example: name
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                          type: object
+                          allOf:
+                            - $ref: '#/components/schemas/article_id'
+                            - $ref: '#/components/schemas/article_base'
+                            - type: object
+                              properties:
+                                categories:
+                                  type: array
+                                  items:
+                                    $ref: '#/components/schemas/article_category'
+        '500':
+          description: Внутренняя ошибка сервера
+    post:
+      tags:
+        - API Articles
+      summary: Добавление статьи
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/article_base'
+                  - $ref: '#/components/schemas/item_media_id_list'
+                  - type: object
+                    properties:
+                      categories:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/article_category_id'
+                      blocks:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/block_base'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/article_id'
+        '500':
+          description: Внутренняя ошибка сервера
+  /api/v1/admin/articles/{id}:
+    get:
+      tags:
+        - API Articles
+      summary: Детальное описание статьи
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/components/schemas/article_id'
+                  - $ref: '#/components/schemas/article_base'
+                  - $ref: '#/components/schemas/item_media_list'
+                  - type: object
+                    properties:
+                      categories:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/article_category'
+                      blocks:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/block'
+        '500':
+          description: Внутренняя ошибка сервера
+    put:
+      tags:
+        - API Articles
+      summary: Редактирование статьи
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/components/schemas/article_base'
+                  - $ref: '#/components/schemas/item_media_id_list'
+                  - type: object
+                    properties:
+                      categories:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/article_category_id'
+                      blocks:
+                        type: array
+                        items:
+                          type: object
+                          allOf:
+                            - $ref: '#/components/schemas/block_id_optional'
+                            - $ref: '#/components/schemas/block_base'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/components/schemas/article_id'
+                  - $ref: '#/components/schemas/article_base'
+                  - $ref: '#/components/schemas/item_media_list'
+                  - type: object
+                    properties:
+                      categories:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/article_category'
+                      blocks:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/block'
+        '500':
+          description: Внутренняя ошибка сервера
+    patch:
+      tags:
+        - API Articles
+      summary: Публикация статьи
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_published:
+                    type: boolean
+                    description: Статус публикации
+                    example: true
+                required:
+                  - is_published
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_published:
+                    type: boolean
+                    description: Статус публикации
+                    example: true
+                required:
+                  - is_published
+        '500':
+          description: Внутренняя ошибка сервера
+    delete:
+      tags:
+        - API Articles
+      summary: Удаление статьи
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/admin/articles/categories:
+    get:
+      tags:
+        - API Articles categories
+      summary: Список всех категорий статей
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - name: direction
+          in: query
+          description: Направление сортировки
+          required: false
+          schema:
+              type: string
+              default: asc
+              enum:
+                - desc
+                - asc
+              example: asc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                            $ref: '#/components/schemas/article_category'
+    post:
+      tags:
+        - API Articles categories
+      summary: Добавление категории статьи
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/article_category_base"
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/article_category_id'
+  /api/v1/admin/articles/categories/{id}:
+    get:
+      tags:
+        - API Articles categories
+      summary: Детальное описание категории статьи 
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/article_category'
+        '500':
+          description: Внутренняя ошибка сервера
+    put:
+      tags:
+        - API Articles categories
+      summary: Редактирование категории статьи
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/article_category_base"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/article_category'
+        '500':
+          description: Внутренняя ошибка сервера
+    delete:
+      tags:
+        - API Articles categories
+      summary: Удаление категории статьи
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/admin/mediafiles:
+    get:
+      tags:
+        - API Mediafiles
+      summary: Список медиафайлов
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/filter_param"
+        - name: direction
+          in: query
+          description: Направление сортировки по наименованию медиафайла
+          required: false
+          schema:
+              type: string
+              default: asc
+              enum:
+                - desc
+                - asc
+              example: asc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                            $ref: '#/components/schemas/media'
+  /api/v1/admin/mediafiles/remote:
+    post:
+      tags:
+        - API Mediafiles
+      summary: Добавление удаленного медиафайла
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/media_base"
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/media_id'
+  /api/v1/admin/mediafiles/local:
+    post:
+      tags:
+        - API Mediafiles
+      summary: Добавление локального медиафайла
+      requestBody:
+        required: true
+        content:
+            multipart/form-data:
+              schema:
+                type: object
+                properties:
+                  file:
+                    type: string
+                    format: binary
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/media_id'
+  /api/v1/admin/mediafiles/{id}:
+    get:
+      tags:
+        - API Mediafiles
+      summary: Детальное описание медиафайла 
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/media'
+        '500':
+          description: Внутренняя ошибка сервера
+    put:
+      tags:
+        - API Mediafiles
+      summary: Редактирование медиафайла
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: Название медафайла
+                    example: Скамья ELM (logo) 
+                required:
+                  - name
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/media'
+        '500':
+          description: Внутренняя ошибка сервера
+    delete:
+      tags:
+        - API Mediafiles
+      summary: Удаление медафайла
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Медиафайл нельзя удалить, так как он используется.
+
+  /api/v1/admin/requests:
+    get:
+      tags:
+        - API Requests
+      summary: Список заявок
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/filter_param"
+        - $ref: "#/components/parameters/direction_param"
+        - name: sort_by
+          in: query
+          description: Параметр сортировки
+          required: false
+          schema:
+              type: string
+              default: asc
+              enum:
+                - name
+                - created_date
+              example: name
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                          type: object
+                          allOf:
+                            - $ref: '#/components/schemas/request'
+                            - type: object
+                              properties:
+                                file:
+                                  $ref: "#/components/schemas/request_file"
+                                status:
+                                  $ref: "#/components/schemas/request_status"
+
+  /api/v1/admin/requests/{id}:
+    get:
+      tags:
+        - API Requests
+      summary: Детальное описание заявки 
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/components/schemas/request'
+                  - type: object
+                    properties:
+                      file:
+                        $ref: "#/components/schemas/request_file"
+                      status:
+                        $ref: "#/components/schemas/request_status"
+        '500':
+          description: Внутренняя ошибка сервера
+    patch:
+      tags:
+        - API Requests
+      summary: Изменение статуса заявки
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/request_status_id"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+    delete:
+      tags:
+        - API Requests
+      summary: Удаление заявки
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/admin/subscriptions:
+    get:
+      tags:
+        - API Subscriptions
+      summary: Список подписок
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/direction_param"
+        - name: filter
+          in: query
+          description: Поиск по email
+          required: false
+          schema:
+            type: string
+            example: ск
+        - name: sort_by
+          in: query
+          description: Параметр сортировки
+          required: false
+          schema:
+              type: string
+              default: asc
+              enum:
+                - email
+                - subscribe_date
+              example: email
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/subscription"
+  /api/v1/admin/subscriptions/{id}:
+    delete:
+      tags:
+        - API Subscriptions
+      summary: Удаление подписки
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/admin/newsletters:
+    get:
+      tags:
+        - API Newsletters
+      summary: Список рассылок
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/filter_param"
+        - $ref: "#/components/parameters/direction_param"
+        - name: sort_by
+          in: query
+          description: Параметр сортировки
+          required: false
+          schema:
+              type: string
+              default: name
+              enum:
+                - name
+                - created_date
+              example: name
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                          type: object
+                          allOf:
+                            - $ref: '#/components/schemas/newsletter_id'
+                            - $ref: '#/components/schemas/newsletter_base'
+                            - type: object
+                              properties:
+                                status:
+                                  $ref: "#/components/schemas/newsletter_status"
+                              required:
+                                - status
+    post:
+      tags:
+        - API Newsletters
+      summary: Добавление рассылки
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/newsletter_base'
+                  - type: object
+                    properties:
+                      file:
+                        $ref: "#/components/schemas/media_id"
+                    required:
+                      - file
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/newsletter_id'
+  /api/v1/admin/newsletters/{id}:
+    get:
+      tags:
+        - API Newsletters
+      summary: Детальное описание рассылки
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/newsletter_id'
+                  - $ref: '#/components/schemas/newsletter_base'
+                  - type: object
+                    properties:
+                      file:
+                        $ref: "#/components/schemas/media"
+                    required:
+                      - file
+    put:
+      tags:
+        - API Newsletters
+      summary: Редактирование рассылки
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/newsletter_base'
+                  - type: object
+                    properties:
+                      file:
+                        $ref: "#/components/schemas/media_id"
+                    required:
+                      - file
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/newsletter_base'
+                  - type: object
+                    properties:
+                      file:
+                        $ref: "#/components/schemas/media"
+                    required:
+                      - file
+    delete:
+      tags:
+        - API Newsletters
+      summary: Удаление рассылки
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/admin/newsletters/{id}/send:
+    post:
+      tags:
+        - API Newsletters
+      summary: Запуск рассылки
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+
+  /api/v1/admin/admins:
+    get:
+      tags:
+        - API Admins
+      summary: Список администраторов
+      parameters:
+        - $ref: "#/components/parameters/page_idx_param"
+        - $ref: "#/components/parameters/page_size_param"
+        - $ref: "#/components/parameters/direction_param"
+        - name: sort_by
+          in: query
+          description: Параметр сортировки
+          required: false
+          schema:
+              type: string
+              default: name
+              enum:
+                - last_name
+                - name
+              example: name
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - objects
+                    properties:
+                      objects:
+                        type: array
+                        items:
+                          type: object
+                          allOf:
+                            - $ref: '#/components/schemas/admin_id'
+                            - $ref: '#/components/schemas/admin_base'
+        '500':
+          description: Внутренняя ошибка сервера
+    post:
+      tags:
+        - API Admins
+      summary: Добавление администратора
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/admin_base'
+                  - $ref: '#/components/schemas/admin_details'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/admin_id'
+        '500':
+          description: Внутренняя ошибка сервера
+    patch:
+      tags:
+        - API Admins
+      summary: Изменение пароля
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  password:
+                    type: string
+                    description: Пароль администратора
+                    format: password
+                    example: 234andfdsds8fwqeq
+                required:
+                  - password
+      responses:
+        '204':
+          description: No Content
+  /api/v1/admin/admins/{id}:
+    get:
+      tags:
+        - API Admins
+      summary: Получение профиля администратора
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/admin_id'
+                  - $ref: '#/components/schemas/admin_base'
+                  - $ref: '#/components/schemas/admin_details'
+                  - type: object
+                    required:
+                      - media
+                    properties:
+                      media:
+                        $ref: '#/components/schemas/media'
+        '500':
+          description: Внутренняя ошибка сервера
+    put:
+      tags:
+        - API Admins
+      summary: Редактирование профиля администратора
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/admin_base'
+                  - $ref: '#/components/schemas/admin_details'
+                  - type: object
+                    required:
+                      - media
+                    properties:
+                      media:
+                        $ref: '#/components/schemas/media_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/admin'
+                  - $ref: '#/components/schemas/admin_details'
+                  - type: object
+                    required:
+                      - media
+                    properties:
+                      media:
+                        $ref: '#/components/schemas/media'
+    delete:
+      tags:
+        - API Admins
+      summary: Удаление администратора
+      parameters:
+        - $ref: "#/components/parameters/id_param"
+      responses:
+        '204':
+          description: No Content
+        '500':
+          description: Внутренняя ошибка сервера
+
+components:
+  parameters:
+    page_idx_param:
+      name: page_idx
+      in: query
+      description: Индекс страницы для пагинации
+      required: false
+      schema:
+          type: integer
+          minimum: 0
+          default: 0
+          example: 1
+    page_size_param:
+      name: page_size
+      in: query
+      description: Максимальное число возвращаемых элементов
+      required: true
+      schema:
+          type: integer
+          minimum: 1
+          example: 10
+    filter_param:
+      name: filter
+      in: query
+      description: Поиск по наименованию
+      required: false
+      schema:
+        type: string
+        example: ск
+    direction_param:
+      name: direction
+      in: query
+      description: Направление сортировки
+      required: false
+      schema:
+          type: string
+          default: asc
+          enum:
+            - desc
+            - asc
+          example: asc
+    id_param:
+      name: id
+      in: path
+      description: Идентификатор
+      required: true
+      schema:
+          type: integer
+          example: 1
+  schemas:
+    pagination:
+      required:
+      - current_page
+      - total_pages
+      - total_objects
+      properties:
+        current_page:
+          type: integer
+          description: Номер текущей страницы
+          example: 1
+        total_pages:
+          type: integer
+          description: Общее количество страниц
+          example: 10 
+        total_objects:
+          type: integer
+          description: Общее количество возвращаемых объектов
+          example: 155 
+    product_id:
+      type: object
+      required:
+        - product_id
+      properties:
+        product_id:
+          type: integer
+          description: Идентификатор товара
+          example: 1
+    product_base:
+      required:
+      - name
+      - article
+      - start_price
+      - description
+      - is_hit
+      - category
+      - series
+      type: object
+      properties:
+        name:
+          type: string
+          description: Наименование товара
+          example: Скамья Elm (Элм)
+        article:
+          type: string
+          description: Артикул товара
+          example: EM-FLAT-1200
+        start_price:
+          type: integer
+          description: Начальная стоимость товара
+          example: 18500
+        description:
+          type: string
+          description: Описание товара
+          example: Стильная и функциональная скамья Elm (Элм) - идеальное решение для благоустройства городских территорий и частных зон отдыха
+        is_hit:
+          type: boolean
+          description: Статус хита товара
+          example: true
+    project_product:
+      required:
+      - product_id
+      - name
+      - article
+      type: object
+      properties:
+        product_id:
+          type: integer
+          description: Идентификатор товара
+          example: 1
+        name:
+          type: string
+          description: Наименование товара
+          example: Скамья Elm (Элм)
+        article:
+          type: string
+          description: Артикул товара
+          example: EM-FLAT-1200
+    product_short_description:
+      type: object
+      properties:
+        short_description:
+          type: string
+          description: Краткое описание товара хита
+          example: Популярное решение для дома, офисов и общественных пространств
+    item_media_list:
+      type: object
+      required:
+        - media_files
+      properties:
+        media_files:
+          type: array
+          items:
+            $ref: '#/components/schemas/item_media'
+    item_media_id_list:
+      type: object
+      required:
+        - media_files
+      properties:
+        media_files:
+          type: array
+          items:
+            $ref: '#/components/schemas/item_media_id'
+    product_category_id:
+      required:
+      - category_id
+      type: object
+      properties:
+        category_id:
+          type: integer
+          description: Идентификатор категории товара
+          example: 1
+    product_category_base:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+          description: Название категории товара
+          example: Скамейки
+    product_category:
+      allOf:
+        - $ref: "#/components/schemas/product_category_id"
+        - $ref: "#/components/schemas/product_category_base"
+    product_series_id:
+      required:
+      - series_id
+      type: object
+      properties:
+        series_id:
+          type: integer
+          description: Идентификатор серии товара
+          example: 1
+    product_series_base:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+          description: Название серии товара
+          example: Elmwood
+    product_series:
+      allOf:
+        - $ref: "#/components/schemas/product_series_id"
+        - $ref: "#/components/schemas/product_series_base"
+    item_media_id:
+      required:
+      - media
+      - is_main
+      type: object
+      properties:
+        media:
+          $ref: "#/components/schemas/media_id"
+        is_main:
+            type: boolean
+            description: Признак главного изображения
+            example: false
+    item_media:
+      required:
+      - media
+      - is_main
+      type: object
+      properties:
+        media:
+          $ref: "#/components/schemas/media"
+        is_main:
+            type: boolean
+            description: Признак главного изображения
+            example: false
+    media_id:
+      type: object
+      required:
+        - media_id
+      properties:
+        media_id:
+          type: integer
+          description: Идентификатор медафайла
+          example: 1
+    media_base:
+      required:
+      - name
+      - type
+      - path
+      type: object
+      properties:
+        name:
+          type: string
+          description: Название медафайла
+          example: Example 
+        type:
+          type: string
+          enum:
+            - image_remote
+            - image_local
+            - video_dzen
+          description: Тип медиафайла
+          example: image_remote 
+        path:
+          type: string
+          description: Путь контента
+          example: http://example.ru/images/1.jpg
+    media:
+      allOf:
+        - $ref: '#/components/schemas/media_id'
+        - $ref: '#/components/schemas/media_base'
+    project_id:
+      type: object
+      required:
+        - project_id
+      properties:
+        project_id:
+          type: integer
+          description: Идентификатор проекта
+          example: 1
+    project_base:
+      required:
+      - name
+      - city
+      - address
+      - description
+      type: object
+      properties:
+        name:
+          type: string
+          description: Наименование проекта
+          example: Двор в ЖК Afi Park
+        city:
+          type: string
+          description: Город
+          example: Москва
+        address:
+          type: string
+          description: Адрес
+          example: ул.Академика Челомея, д.7
+        description:
+          type: string
+          description: Описание товара
+          example: Двор для жилого комплекса AF...
+    project_category_id:
+      required:
+      - category_id
+      type: object
+      properties:
+        category_id:
+          type: integer
+          description: Идентификатор категории проекта
+          example: 1
+    project_category_name:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Название категории проекта
+          example: Жилой комплекс
+      required:
+        - name
+    project_category_name_plural:
+      type: object
+      properties:
+        name_plural:
+          type: string
+          description: Название категории проекта во множественном числе
+          example: Жилые комплексы
+      required:
+        - name_plural
+    project_category_base:
+      allOf:
+        - $ref: "#/components/schemas/project_category_name"
+        - $ref: "#/components/schemas/project_category_name_plural"
+    project_category:
+      allOf:
+        - $ref: "#/components/schemas/project_category_id"
+        - $ref: "#/components/schemas/project_category_base"
+
+    solution_id:
+      type: object
+      required:
+        - solution_id
+      properties:
+        solution_id:
+          type: integer
+          description: Идентификатор готового решения
+          example: 1
+    solution_base:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Наименование готового решения
+          example: Зоны отдыха с урнами
+      required:
+      - name
+    solution:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/solution_id"
+        - $ref: "#/components/schemas/solution_base"
+
+    article_id:
+      type: object
+      properties:
+        article_id:
+          type: integer
+          description: Идентификатор статьи
+          example: 1
+      required:
+      - article_id
+    article_base:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Наименование статьи
+          example: Как мы оформили двор в ЖК AF...
+        publish_date:
+          type: string
+          format: date
+          description: Дата публикации статьи
+          example: 01.07.2025
+        read_time:
+          type: integer
+          description: Время чтения статьи в минутах
+          example: 5
+        excerpt:
+          type: string
+          description: Краткое описание
+          example: В 2024 году мы изготовили и произв...
+        is_published:
+          type: boolean
+          description: Статус публикации
+          example: true
+      required:
+        - title
+        - publish_date
+        - read_time
+        - excerpt
+        - is_published
+    article:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/article_id"
+        - $ref: "#/components/schemas/article_base"
+
+    block_id:
+      type: object
+      properties:
+        block_id:
+          type: integer
+          description: Идентификатор блока статьи
+          example: 1
+      required:
+      - block_id
+    block_id_optional:
+      type: object
+      properties:
+        block_id:
+          type: integer
+          description: Идентификатор блока статьи
+          example: 1
+    block_base:
+      type: object
+      properties:
+        position:
+          type: integer
+          description: Порядок расположения блоков в статье
+          example: 1
+        content:
+          type: string
+          description: Содержание блока статьи
+          example:
+        block_type:
+          type: integer
+          description: Время чтения статьи в минутах
+          example: 5
+      required:
+        - position
+        - content
+        - block_type
+    block:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/block_id"
+        - $ref: "#/components/schemas/block_base"
+    block_type_id:
+      type: object
+      properties:
+        block_type_id:
+          type: integer
+          description: Идентификатор типа блока статьи
+          example: 1
+      required:
+      - block_type_id
+    block_type_base:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Наименование типа блока статьи
+          example: Текст с изображением
+      required:
+        - name
+        - description
+    block_type:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/block_type_id"
+        - $ref: "#/components/schemas/block_type_base"
+    
+    article_category_id:
+      required:
+      - category_id
+      type: object
+      properties:
+        category_id:
+          type: integer
+          description: Идентификатор категории статьи
+          example: 1
+    article_category_base:
+      type: object
+      description: Статья
+      properties:
+        name:
+          type: string
+          description: Название категории статьи
+          example: Новое_1
+      required:
+        - name
+    article_category:
+      allOf:
+        - $ref: "#/components/schemas/article_category_id"
+        - $ref: "#/components/schemas/article_category_base"
+
+    request_id:
+      required:
+      - request_id
+      type: object
+      properties:
+        request_id:
+          type: integer
+          description: Идентификатор заявки
+          example: 1
+    request_base:
+      type: object
+      description: Заявка
+      properties:
+        name:
+          type: string
+          description: Имя клиента
+          example: Константин
+        phone:
+          type: string
+          description: Телефон клиента
+          example: +7-999-999-99-99
+        comment:
+          type: string
+          description: Комментарий клиента
+          example: Перезвоните мне
+        created_date:
+          type: string
+          format: date
+          description: Дата создания заявки
+          example: 11.09.2025
+      required:
+        - name
+        - phone
+        - comment
+        - created_date
+    request:
+      allOf:
+        - $ref: "#/components/schemas/request_id"
+        - $ref: "#/components/schemas/request_base"
+
+    request_status_id:
+      type: object
+      properties:
+        request_status_id:
+          type: integer
+          description: Идентификатор статуса заявки
+          example: 1
+      required:
+      - request_status_id
+    request_status_base:
+      type: object
+      description: Статтус заявки
+      properties:
+        name:
+          type: string
+          description: Название статуса заявки
+          example: В обработке
+      required:
+        - name
+    request_status:
+      allOf:
+        - $ref: "#/components/schemas/request_status_id"
+        - $ref: "#/components/schemas/request_status_base"
+
+    request_file:
+      type: object
+      properties:
+        file_id:
+          type: integer
+          description: Идентификатор файла заявки
+          example: 1
+        file_path:
+          type: integer
+          description: URL медиафайла
+          example: 1
+      required:
+      - file_id
+      - file_path
+
+    subscription_id:
+      type: object
+      properties:
+        subscription_id:
+          type: integer
+          description: Идентификатор подписки
+          example: 1
+      required:
+      - subscription_id
+    subscription_base:
+      type: object
+      description: Подписка
+      properties:
+        email:
+          type: string
+          description: email для рассылки
+          example: Ivanov@example.com
+        subscribe_date:
+          type: string
+          format: date
+          description: Дата подписки
+          example: 15.09.2025
+        is_confirmed:
+          type: boolean
+          description: Статус подтверждения подписки
+          example: true
+        is_active:
+          type: boolean
+          description: Статус активности подписки
+          example: true
+      required:
+        - email
+        - subscribe_date
+        - is_confirmed
+        - is_active
+    subscription:
+      allOf:
+        - $ref: "#/components/schemas/subscription_id"
+        - $ref: "#/components/schemas/subscription_base"
+
+    newsletter_id:
+      type: object
+      properties:
+        newsletter_id:
+          type: integer
+          description: Идентификатор рассылки
+          example: 1
+      required:
+      - subscription_id
+    newsletter_base:
+      type: object
+      description: Рассылка
+      properties:
+        name:
+          type: string
+          description: Наименование рассылки
+          example: Акция01
+        created_date:
+          type: string
+          format: date
+          description: Дата создания рассылки
+          example: 15.09.2025
+        body_text:
+          type: string
+          description: Текст рассылки
+          example: Добрый день...
+      required:
+        - name
+        - created_date
+        - body_text
+    newsletter_status:
+      type: object
+      properties:
+        status_id:
+          type: integer
+          description: Идентификатор статуса рассылки
+          example: 1
+        name:
+          type: string
+          description: Наименование статуса рассылки
+          example: В работе
+      required:
+        - status_id
+        - name
+
+    admin_id:
+      type: object
+      properties:
+        admin_id:
+          type: integer
+          description: Идентификатор администратора
+          example: 1
+      required:
+      - subscription_id
+    admin_base:
+      type: object
+      description: Администратор
+      properties:
+        name:
+          type: string
+          description: Имя администратора
+          example: Ольга
+        last_name:
+          type: string
+          description: Фамилия администратора
+          example: Архипова
+      required:
+        - name
+        - last_name
+    admin_details:
+      type: object
+      properties:
+        phone:
+          type: string
+          description: Телефон администратора
+          example: +7-999-999-99-99
+        email:
+          type: string
+          description: Email администратора
+          example: example@mail.com
+      required:
+        - phone
+        - email
+    admin:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/admin_id'
+        - $ref: '#/components/schemas/admin_base'
+
+  securitySchemes:
+    adminAuth:
+      type: apiKey
+      in: cookie
+      name: SESSIONID
+security:
+  - adminAuth: []
